@@ -104,7 +104,7 @@ action:
               target:
                 entity_id: "{{ repeat.item }}"
               data:
-                volume_level: "{{ [0.01, default_volume - 0.01] | max }}"
+                volume_level: "{{ ([0.01, default_volume - 0.01] | max) | round(2) }}"
             - delay: "00:00:02"  # Attendre que le changement soit pris en compte
             
             # Étape 2: Définir le volume final souhaité (cela va créer previous_volume)
@@ -112,7 +112,7 @@ action:
               target:
                 entity_id: "{{ repeat.item }}"
               data:
-                volume_level: "{{ default_volume }}"
+                volume_level: "{{ default_volume | round(2) }}"
             
             # Étape 3: Vérification et log
             - delay: "00:00:01"
