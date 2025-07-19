@@ -1,0 +1,75 @@
+alias: "Initialisation des volumes Alexa"
+description: "Initialise les volumes des appareils Alexa au démarrage et rechargement"
+mode: single
+max_exceeded: silent
+
+variables:
+  # ⚙️ CONFIGURATION - Modifiez ces valeurs selon vos besoins
+  media_players:
+    - media_player.echo_dot_gael
+    - media_player.echo_sdb
+    - media_player.echo_show_chambre
+    - media_player.echo_show_cuisine
+    - media_player.echo_studio_d
+    - media_player.echo_studio_g
+    - media_player.fire_tv_cube
+    - media_player.home_cinema
+    - media_player.partout_2
+  default_volume: 0.13  # Volume par défaut (0.0 à 1.0)
+  startup_delay: 30     # Délai au démarrage en secondes
+  device_delay: 1       # Délai entre appareils en secondes
+
+trigger:
+  - platform: homeassistant
+    event: start
+    id: "startup"
+  - platform: state
+    entity_id:
+      - media_player.echo_dot_gael
+      - media_player.echo_sdb
+      - media_player.echo_show_chambre
+      - media_player.echo_show_cuisine
+      - media_player.echo_studio_d
+      - media_player.echo_studio_g
+      - media_player.fire_tv_cube
+      - media_player.home_cinema
+      - media_player.partout_2
+    from: "unavailable"
+    for: "00:00:05"
+    id: "reload"
+
+condition:
+  - condition: template
+    value_template: "{{ media_players | length > 0 }}"
+
+action:
+  - if:
+      - condition: trigger
+        id: "startup"
+    then:
+      - delay: "{{ '%02d:%02d:%02d' % (0, startup_delay // 60, startup_delay % 60) }}"
+    else:
+      - delay: "00:00:10"  # Délai réduit pour le rechargement
+  
+  - repeat:
+      for_each: "{{ media_players }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ states(repeat.item) not in ['unavailable', 'unknown'] }}"
+          then:
+            - service: media_player.volume_set
+              target:
+                entity_id: "{{ repeat.item }}"
+              data:
+                volume_level: "{{ default_volume }}"
+            - if:
+                - condition: template
+                  value_template: "{{ device_delay > 0 }}"
+              then:
+                - delay: "{{ '%02d:%02d:%02d' % (0, device_delay // 60, device_delay % 60) }}"
+          else:
+            - service: system_log.write
+              data:
+                message: "Appareil Alexa {{ repeat.item }} non disponible lors de l'initialisation du volume"
+                level: warning
